@@ -119,34 +119,18 @@ class CacheManager
      */
     public function generateUrl($path, $filter, $absolute = false)
     {
-        $config = $this->filterConfig->get($filter);
-
-        if (isset($config['format'])) {
-            $pathinfo = pathinfo($path);
-
-            // the extension should be forced and a directory is detected
-            if ((!isset($pathinfo['extension']) || $pathinfo['extension'] !== $config['format'])
-                && isset($pathinfo['dirname'])) {
-
-                if ('\\' === $pathinfo['dirname']) {
-                    $pathinfo['dirname'] = '';
-                }
-
-                $path = $pathinfo['dirname'].'/'.$pathinfo['filename'].'.'.$config['format'];
-            }
-        }
-
-        $params = array('path' => ltrim($path, '/'));
+        $params = array(
+            'path' => ltrim($path, '/')
+        );
 
         $params['filters'] = array(
             'crop' => array('start' => [10, 20], 'size' => [120, 90]),
         );
 
-        $filterUrl = str_replace(
-            urlencode($params['path']),
-            urldecode($params['path']),
-            $this->router->generate('_imagine_'.$filter, $params, $absolute)
-        );
+        // /appp.php/media/cache/thumbnail_web_path/images/dream.jpg?filters%5Bcrop%5D%5Bstart%5D%5B0%5D=10&filters%5Bcrop%5D%5Bstart%5D%5B1%5D=20&filters%5Bcrop%5D%5Bsize%5D%5B0%5D=120&filters%5Bcrop%5D%5Bsize%5D%5B1%5D=90&_hash=WuvOO7nfwz2y12Foyrp6h9yGLwdUnYXXMpkJXBS%2FAgk%3D
+        // /appp.php/media/cache/thumbnail_web_path/images/dream.jpg?filters%5Bcrop%5D%5Bstart%5D%5B0%5D=10&filters%5Bcrop%5D%5Bstart%5D%5B1%5D=20&filters%5Bcrop%5D%5Bsize%5D%5B0%5D=120&filters%5Bcrop%5D%5Bsize%5D%5B1%5D=90&_hash=WuvOO7nfwz2y12Foyrp6h9yGLwdUnYXXMpkJXBS%2FAgk%3D
+
+        $filterUrl = $this->router->generate('_imagine_'.$filter, $params, $absolute);
 
         $signer = new UriSigner('aSecret');
         $filterUrl = $signer->sign($filterUrl);
@@ -162,9 +146,9 @@ class CacheManager
      *
      * @return bool
      */
-    public function isStored($path, $filter, $filterPostfix = '')
+    public function isStored($path, $filter)
     {
-        return $this->getResolver($filter)->isStored($path, $filter.$filterPostfix);
+        return $this->getResolver($filter)->isStored($path, $filter);
     }
 
     /**
@@ -177,13 +161,13 @@ class CacheManager
      *
      * @throws NotFoundHttpException if the path can not be resolved
      */
-    public function resolve($path, $filter, $filterPostfix = '')
+    public function resolve($path, $filter)
     {
         if (false !== strpos($path, '/../') || 0 === strpos($path, '../')) {
             throw new NotFoundHttpException(sprintf("Source image was searched with '%s' outside of the defined root path", $path));
         }
 
-        return $this->getResolver($filter)->resolve($path, $filter.$filterPostfix);
+        return $this->getResolver($filter)->resolve($path, $filter);
     }
 
     /**

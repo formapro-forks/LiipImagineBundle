@@ -53,27 +53,27 @@ class ImagineController
     public function filterAction($path, $filter, Request $request)
     {
         $runtimeConfig = array();
-        $filterPostfix = '';
+        $pathPrefix = '';
         if ($runtimeFilters = $request->query->get('filters', array())) {
             $signer = new UriSigner('aSecret');
             if (false == $signer->check($request->getRequestUri())) {
-//                throw new BadRequestHttpException('');
+                throw new BadRequestHttpException('');
             }
 
             $runtimeConfig['filters'] = $runtimeFilters;
-            $filterPostfix = '+'.substr($request->query->get('_hash'), 0, 8);
+            $pathPrefix = substr($request->query->get('_hash'), 0, 8).'/';
         }
 
-        if (!$this->cacheManager->isStored($path, $filter, $filterPostfix)) {
+        if (!$this->cacheManager->isStored($path, $filter)) {
             $binary = $this->dataManager->find($filter, $path);
 
             $this->cacheManager->store(
                 $this->filterManager->applyFilter($binary, $filter, $runtimeConfig),
-                $path,
+                $pathPrefix.$path,
                 $filter
             );
         }
 
-        return new RedirectResponse($this->cacheManager->resolve($path, $filter, $filterPostfix), 301);
+        return new RedirectResponse($this->cacheManager->resolve($pathPrefix.$path, $filter), 301);
     }
 }
