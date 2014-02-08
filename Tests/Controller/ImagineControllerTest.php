@@ -22,6 +22,7 @@ use Liip\ImagineBundle\Tests\AbstractTest;
 use Symfony\Component\HttpFoundation\File\MimeType\ExtensionGuesser;
 use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\UriSigner;
 use Symfony\Component\Routing\RequestContext;
 
 /**
@@ -105,14 +106,19 @@ class ImagineControllerTest extends AbstractTest
         $cacheManager = new CacheManager(
             $this->configuration,
             $this->createRouterMock(),
-            'web_path'
+            new UriSigner('secret')
         );
 
         $cacheManager->addResolver('web_path', $webPathResolver);
 
-        $controller = new ImagineController($dataManager, $filterManager, $cacheManager, $this->imagine);
+        $controller = new ImagineController(
+            $dataManager,
+            $filterManager,
+            $cacheManager,
+            new UriSigner('secret')
+        );
 
-        $response = $controller->filterAction('cats.jpeg', 'thumbnail');
+        $response = $controller->filterAction(new Request, 'cats.jpeg', 'thumbnail');
 
         $filePath = realpath($this->webRoot).'/media/cache/thumbnail/cats.jpeg';
 
@@ -147,9 +153,14 @@ class ImagineControllerTest extends AbstractTest
         $dataManager = $this->getMock('Liip\ImagineBundle\Imagine\Data\DataManager', array(), array($mimeTypeGuesser, $extensionGuesser, $this->configuration));
         $filterManager = $this->getMock('Liip\ImagineBundle\Imagine\Filter\FilterManager', array(), array($this->configuration, $this->imagine));
 
-        $controller = new ImagineController($dataManager, $filterManager, $cacheManager, $this->imagine);
+        $controller = new ImagineController(
+            $dataManager,
+            $filterManager,
+            $cacheManager,
+            new UriSigner('secret')
+        );
 
-        $response = $controller->filterAction('cats.jpeg', 'thumbnail');
+        $response = $controller->filterAction(new Request, 'cats.jpeg', 'thumbnail');
 
         $this->assertInstanceOf('Symfony\Component\HttpFoundation\RedirectResponse', $response);
         $this->assertEquals('http://foo.com/a/path/image.jpg', $response->headers->get('Location'));
