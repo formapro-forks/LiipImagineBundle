@@ -22,26 +22,33 @@ class CacheManager
     protected $router;
 
     /**
-     * @var string
-     */
-    protected $defaultResolver;
-
-    /**
      * @var ResolverInterface[]
      */
     protected $resolvers = array();
+
+    /**
+     * @var UriSigner
+     */
+    protected $uriSigner;
+
+    /**
+     * @var string
+     */
+    protected $defaultResolver;
 
     /**
      * Constructs the cache manager to handle Resolvers based on the provided FilterConfiguration.
      *
      * @param FilterConfiguration $filterConfig
      * @param RouterInterface $router
+     * @param UriSigner $uriSigner
      * @param string $defaultResolver
      */
-    public function __construct(FilterConfiguration $filterConfig, RouterInterface $router, $defaultResolver = null)
+    public function __construct(FilterConfiguration $filterConfig, RouterInterface $router, UriSigner $uriSigner, $defaultResolver = null)
     {
         $this->filterConfig = $filterConfig;
         $this->router = $router;
+        $this->uriSigner = $uriSigner;
         $this->defaultResolver = $defaultResolver;
     }
 
@@ -95,15 +102,19 @@ class CacheManager
      *
      * @param string $path The path where the resolved file is expected.
      * @param string $filter
-     * @param boolean $absolute
+     * @param array $runtimeConfig
      *
      * @return string
      */
-    public function getBrowserPath($path, $filter, $absolute = false)
+    public function getBrowserPath($path, $filter, array $runtimeConfig = array())
     {
+        if (!empty($runtimeConfig)) {
+            return $this->generateUrl($path, $filter, $runtimeConfig);
+        }
+
         return $this->isStored($path, $filter) ?
             $this->resolve($path, $filter) :
-            $this->generateUrl($path, $filter, $absolute)
+            $this->generateUrl($path, $filter)
         ;
     }
 
@@ -112,28 +123,25 @@ class CacheManager
      *
      * @param string $path The path where the resolved file is expected.
      * @param string $filter The name of the imagine filter in effect.
-     * @param bool $absolute Whether to generate an absolute URL or a relative path is accepted.
-     *                       In case the resolver does not support relative paths, it may ignore this flag.
+     * @param array $runtimeConfig
      *
      * @return string
      */
-    public function generateUrl($path, $filter, $absolute = false)
+    public function generateUrl($path, $filter, array $runtimeConfig = array())
     {
         $params = array(
-            'path' => ltrim($path, '/')
+            'path' => ltrim($path, '/'),
         );
 
-        $params['filters'] = array(
-            'crop' => array('start' => [10, 20], 'size' => [120, 90]),
-        );
+        if (!empty($runtimeConfig)) {
+            $params['filters'] = $runtimeConfig;
+        }
 
-        // /appp.php/media/cache/thumbnail_web_path/images/dream.jpg?filters%5Bcrop%5D%5Bstart%5D%5B0%5D=10&filters%5Bcrop%5D%5Bstart%5D%5B1%5D=20&filters%5Bcrop%5D%5Bsize%5D%5B0%5D=120&filters%5Bcrop%5D%5Bsize%5D%5B1%5D=90&_hash=WuvOO7nfwz2y12Foyrp6h9yGLwdUnYXXMpkJXBS%2FAgk%3D
-        // /appp.php/media/cache/thumbnail_web_path/images/dream.jpg?filters%5Bcrop%5D%5Bstart%5D%5B0%5D=10&filters%5Bcrop%5D%5Bstart%5D%5B1%5D=20&filters%5Bcrop%5D%5Bsize%5D%5B0%5D=120&filters%5Bcrop%5D%5Bsize%5D%5B1%5D=90&_hash=WuvOO7nfwz2y12Foyrp6h9yGLwdUnYXXMpkJXBS%2FAgk%3D
+        $filterUrl = $this->router->generate('_imagine_'.$filter, $params, true);
 
-        $filterUrl = $this->router->generate('_imagine_'.$filter, $params, $absolute);
-
-        $signer = new UriSigner('aSecret');
-        $filterUrl = $signer->sign($filterUrl);
+        if (!empty($runtimeConfig)) {
+            $filterUrl = $this->uriSigner->sign($filterUrl);
+        }
 
         return $filterUrl;
     }

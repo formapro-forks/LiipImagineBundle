@@ -31,33 +31,46 @@ class ImagineController
     protected $cacheManager;
 
     /**
-     * @param DataManager $dataManager
-     * @param FilterManager $filterManager
-     * @param CacheManager $cacheManager
+     * @var UriSigner
      */
-    public function __construct(DataManager $dataManager, FilterManager $filterManager, CacheManager $cacheManager)
-    {
+    protected $uriSigner;
+
+    /**
+     * @param DataManager   $dataManager
+     * @param FilterManager $filterManager
+     * @param CacheManager  $cacheManager
+     * @param UriSigner     $uriSigner
+     */
+    public function __construct(
+        DataManager $dataManager,
+        FilterManager $filterManager,
+        CacheManager $cacheManager,
+        UriSigner $uriSigner
+    ) {
         $this->dataManager = $dataManager;
         $this->filterManager = $filterManager;
         $this->cacheManager = $cacheManager;
+        $this->uriSigner = $uriSigner;
     }
 
     /**
      * This action applies a given filter to a given image, optionally saves the image and outputs it to the browser at the same time.
      *
+     * @param Request $request
      * @param string $path
      * @param string $filter
      *
+     * @throws BadRequestHttpException
+     *
      * @return RedirectResponse
      */
-    public function filterAction($path, $filter, Request $request)
+    public function filterAction(Request $request, $path, $filter)
     {
         $runtimeConfig = array();
         $pathPrefix = '';
         if ($runtimeFilters = $request->query->get('filters', array())) {
-            $signer = new UriSigner('aSecret');
-            if (false == $signer->check($request->getRequestUri())) {
-                throw new BadRequestHttpException('');
+            if (false == $this->uriSigner->check($request->getSchemeAndHttpHost().$request->getRequestUri())) {
+                throw new BadRequestHttpException('Signed url does not pass the sign check. Maybe it was modified by someone.');
             }
 
             $runtimeConfig['filters'] = $runtimeFilters;
