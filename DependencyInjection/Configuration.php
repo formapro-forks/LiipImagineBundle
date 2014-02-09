@@ -2,20 +2,42 @@
 
 namespace Liip\ImagineBundle\DependencyInjection;
 
+use Liip\ImagineBundle\DependencyInjection\Factory\Resolver\ResolverFactoryInterface;
+use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
 class Configuration implements ConfigurationInterface
 {
     /**
-     * Generates the configuration tree.
-     *
-     * @return TreeBuilder
+     * @var ResolverFactoryInterface[]
+     */
+    protected $resolversFactories;
+
+    /**
+     * @param ResolverFactoryInterface[] $resolversFactories
+     */
+    public function __construct(array $resolversFactories)
+    {
+        $this->resolversFactories = $resolversFactories;
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder();
         $rootNode = $treeBuilder->root('liip_imagine', 'array');
+
+        $resolversPrototypeNode = $rootNode
+            ->children()
+                ->arrayNode('resolvers')
+                    ->useAttributeAsKey('name')
+                    ->prototype('array')
+        ;
+
+        $this->addResolversSections($resolversPrototypeNode);
 
         $rootNode
             ->fixXmlConfig('format', 'formats')
@@ -27,9 +49,7 @@ class Configuration implements ConfigurationInterface
                         ->thenInvalid('Invalid imagine driver specified: %s')
                     ->end()
                 ->end()
-                ->scalarNode('web_root')->defaultValue('%kernel.root_dir%/../web')->end()
                 ->scalarNode('data_root')->defaultValue('%liip_imagine.web_root%')->end()
-                ->scalarNode('cache_prefix')->defaultValue('/media/cache')->end()
                 ->scalarNode('cache')->defaultValue('web_path')->end()
                 ->scalarNode('cache_base_path')->defaultValue('')->end()
                 ->scalarNode('data_loader')->defaultValue('filesystem')->end()
@@ -70,5 +90,17 @@ class Configuration implements ConfigurationInterface
         ->end();
 
         return $treeBuilder;
+    }
+
+    /**
+     * @param ArrayNodeDefinition $resolversPrototypeNode
+     */
+    protected function addResolversSections(ArrayNodeDefinition $resolversPrototypeNode)
+    {
+        foreach ($this->resolversFactories as $factory) {
+            $factory->addConfiguration(
+                $resolversPrototypeNode->children()->arrayNode($factory->getName())
+            );
+        }
     }
 }

@@ -185,13 +185,11 @@
 
         <!-- Cache resolver -->
 
-        <service id="liip_imagine.cache.resolver.web_path" class="%liip_imagine.cache.resolver.web_path.class%" public="true">
+        <service id="liip_imagine.cache.resolver.prototype.web_path" class="%liip_imagine.cache.resolver.web_path.class%" public="true" abstract="true">
             <argument type="service" id="filesystem" />
             <argument type="service" id="router.request_context" />
-            <argument>%liip_imagine.web_root%</argument>
-            <argument>%liip_imagine.cache_prefix%</argument>
-
-            <tag name="liip_imagine.cache.resolver" resolver="web_path" />
+            <argument><!-- will be injected by WebPathResolverFactory --></argument>
+            <argument><!-- will be injected by WebPathResolverFactory --></argument>
         </service>
 
         <service id="liip_imagine.cache.resolver.no_cache_web_path" class="%liip_imagine.cache.resolver.no_cache_web_path.class%" public="true">

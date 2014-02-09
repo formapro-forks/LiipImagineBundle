@@ -3,7 +3,8 @@
 namespace Liip\ImagineBundle;
 
 use Liip\ImagineBundle\DependencyInjection\Compiler\LoadersCompilerPass;
-
+use Liip\ImagineBundle\DependencyInjection\Factory\Resolver\WebPathResolverFactory;
+use Liip\ImagineBundle\DependencyInjection\LiipImagineExtension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
@@ -17,5 +18,10 @@ class LiipImagineBundle extends Bundle
         parent::build($container);
 
         $container->addCompilerPass(new LoadersCompilerPass());
+
+        /** @var $extension LiipImagineExtension */
+        $extension = $container->getExtension('liip_imagine');
+
+        $extension->addResolverFactory(new WebPathResolverFactory);
     }
 }

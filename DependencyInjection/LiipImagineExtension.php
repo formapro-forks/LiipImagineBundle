@@ -2,6 +2,7 @@
 
 namespace Liip\ImagineBundle\DependencyInjection;
 
+use Liip\ImagineBundle\DependencyInjection\Factory\Resolver\ResolverFactoryInterface;
 use Symfony\Component\Config\FileLocator;
 
 use Symfony\Component\DependencyInjection\Alias;
@@ -14,20 +15,33 @@ use Symfony\Component\HttpKernel\Kernel;
 class LiipImagineExtension extends Extension
 {
     /**
+     * @var ResolverFactoryInterface[]
+     */
+    protected $resolversFactories = array();
+
+    public function addResolverFactory(ResolverFactoryInterface $resolverFactory)
+    {
+        $this->resolversFactories[$resolverFactory->getName()] = $resolverFactory;
+    }
+
+    /**
      * @see Symfony\Component\DependencyInjection\Extension.ExtensionInterface::load()
      */
     public function load(array $configs, ContainerBuilder $container)
     {
-        $config = $this->processConfiguration(new Configuration(), $configs);
+        $config = $this->processConfiguration(
+            new Configuration($this->resolversFactories),
+            $configs
+        );
+
+        $this->loadResolvers($config['resolvers'], $container);
 
         $loader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('imagine.xml');
 
         $container->setAlias('liip_imagine', new Alias('liip_imagine.'.$config['driver']));
 
-        $cachePrefix = $config['cache_prefix'] ? '/'.trim($config['cache_prefix'], '/') : '';
         $container->setParameter('liip_imagine.cache_prefix', $cachePrefix);
-        $container->setParameter('liip_imagine.web_root', $config['web_root']);
         $container->setParameter('liip_imagine.data_root', $config['data_root']);
         $container->setParameter('liip_imagine.formats', $config['formats']);
         $container->setParameter('liip_imagine.cache.resolver.default', $config['cache']);
@@ -48,5 +62,19 @@ class LiipImagineExtension extends Extension
         $resources = $container->hasParameter('twig.form.resources') ? $container->getParameter('twig.form.resources') : array();
         $resources[] = 'LiipImagineBundle:Form:form_div_layout.html.twig';
         $container->setParameter('twig.form.resources', $resources);
+    }
+
+    /**
+     * @param array $config
+     * @param ContainerBuilder $container
+     */
+    protected function loadResolvers(array $config, ContainerBuilder $container)
+    {
+        foreach ($config as $resolverName => $resolverConfig) {
+            $factoryName = key($resolverConfig);
+            $factory = $this->resolversFactories[$factoryName];
+
+            $factory->create($container, $resolverName, $resolverConfig[$factoryName]);
+        }
     }
 }
