@@ -2,169 +2,171 @@
 
 namespace Liip\ImagineBundle\Tests\Controller;
 
-use Imagine\Image\ImagineInterface;
-
 use Liip\ImagineBundle\Controller\ImagineController;
-
 use Liip\ImagineBundle\Imagine\Cache\CacheManager;
-use Liip\ImagineBundle\Imagine\Cache\Resolver\WebPathResolver;
-
 use Liip\ImagineBundle\Imagine\Data\DataManager;
-use Liip\ImagineBundle\Imagine\Data\Loader\FileSystemLoader;
-
-use Liip\ImagineBundle\Imagine\Filter\FilterConfiguration;
 use Liip\ImagineBundle\Imagine\Filter\FilterManager;
-use Liip\ImagineBundle\Imagine\Filter\Loader\ThumbnailFilterLoader;
-
-use Liip\ImagineBundle\Binary\SimpleMimeTypeGuesser;
-use Liip\ImagineBundle\Tests\AbstractTest;
-
-use Symfony\Component\HttpFoundation\File\MimeType\ExtensionGuesser;
-use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
+use Liip\ImagineBundle\Model\Binary;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\UriSigner;
-use Symfony\Component\Routing\RequestContext;
 
 /**
  * @covers Liip\ImagineBundle\Controller\ImagineController
  */
-class ImagineControllerTest extends AbstractTest
+class ImagineControllerTest extends \PHPUnit_Framework_TestCase
 {
-    /**
-     * @var ImagineInterface
-     */
-    protected $imagine;
-
-    protected $webRoot;
-    protected $cacheDir;
-    protected $dataDir;
-
-    protected $configuration;
-
-    protected function setUp()
+    public function testCouldBeConstructedWithExpectedServices()
     {
-        parent::setUp();
-
-        foreach (array('Imagine\Gd\Imagine', 'Imagine\Imagick\Imagine', 'Imagine\Gmagick\Imagine') as $eachClass) {
-            try {
-                $this->imagine = new $eachClass;
-
-                break;
-            } catch (\Exception $e) { }
-        }
-
-        if (!$this->imagine) {
-            $this->markTestSkipped('No Imagine could be instantiated.');
-        }
-
-        $this->webRoot = $this->tempDir.'/web';
-        $this->filesystem->mkdir($this->webRoot);
-
-        $this->cacheDir = $this->webRoot.'/media/cache';
-        $this->dataDir = $this->fixturesDir.'/assets';
-
-        $this->configuration = new FilterConfiguration(array(
-            'thumbnail' => array(
-                'filters' => array(
-                    'thumbnail' => array(
-                        'size' => array(300, 150),
-                        'mode' => 'outbound',
-                    ),
-                ),
-            ),
-        ));
+        new ImagineController(
+            $this->createDataManagerMock(),
+            $this->createFilterManagerMock(),
+            $this->createCacheManagerMock(),
+            $this->createUriSignerMock()
+        );
     }
 
-    public function testFilterActionLive()
+    public function testShouldResolveIfCacheStored()
     {
-        $dataLoader = new FileSystemLoader(
-            MimeTypeGuesser::getInstance(),
-            ExtensionGuesser::getInstance(),
-            array(),
-            $this->dataDir
-        );
+        $expectedPath = 'theImage';
+        $expectedFilter = 'theFilter';
+        $expectedUrl = 'http://example.com/media/cache/theFilter/theImage';
 
-        $dataManager = new DataManager(
-            new SimpleMimeTypeGuesser(MimeTypeGuesser::getInstance()),
-            ExtensionGuesser::getInstance(),
-            $this->configuration,
-            'filesystem'
-        );
-        $dataManager->addLoader('filesystem', $dataLoader);
+        $dataManagerMock = $this->createDataManagerMock();
+        $dataManagerMock
+            ->expects($this->never())
+            ->method('find')
+        ;
 
-        $filterLoader = new ThumbnailFilterLoader();
+        $filterManagerMock = $this->createFilterManagerMock();
+        $filterManagerMock
+            ->expects($this->never())
+            ->method('applyFilter')
+        ;
 
-        $filterManager = new FilterManager($this->configuration, $this->imagine);
-        $filterManager->addLoader('thumbnail', $filterLoader);
-
-        $webPathResolver = new WebPathResolver(
-            $this->filesystem,
-            new RequestContext,
-            $this->webRoot
-        );
-
-        $cacheManager = new CacheManager(
-            $this->configuration,
-            $this->createRouterMock(),
-            new UriSigner('secret'),
-            'thumbnail'
-        );
-
-        $cacheManager->addResolver('thumbnail', $webPathResolver);
-
-        $controller = new ImagineController(
-            $dataManager,
-            $filterManager,
-            $cacheManager,
-            new UriSigner('secret')
-        );
-
-        $response = $controller->filterAction(new Request, 'cats.jpeg', 'thumbnail');
-
-        $filePath = realpath($this->webRoot).'/media/cache/thumbnail/cats.jpeg';
-
-        $this->assertInstanceOf('Symfony\Component\HttpFoundation\RedirectResponse', $response);
-
-        $this->assertEquals('http://localhost/media/cache/thumbnail/cats.jpeg', $response->getTargetUrl());
-        $this->assertEquals(301, $response->getStatusCode());
-
-        $this->assertTrue(file_exists($filePath));
-        $this->assertNotEmpty(file_get_contents($filePath));
-
-        return $controller;
-    }
-
-    public function testFilterDelegatesResolverResponse()
-    {
-        $cacheManager = $this->getMockCacheManager();
-        $cacheManager
+        $cacheManagerMock = $this->createCacheManagerMock();
+        $cacheManagerMock
             ->expects($this->once())
             ->method('isStored')
+            ->with($expectedPath, $expectedFilter)
             ->will($this->returnValue(true))
         ;
-        $cacheManager
+        $cacheManagerMock
             ->expects($this->once())
             ->method('resolve')
-            ->will($this->returnValue('http://foo.com/a/path/image.jpg'))
+            ->with($expectedPath, $expectedFilter)
+            ->will($this->returnValue($expectedUrl))
         ;
 
-        $mimeTypeGuesser = new SimpleMimeTypeGuesser(MimeTypeGuesser::getInstance());
-        $extensionGuesser = ExtensionGuesser::getInstance();
-
-        $dataManager = $this->getMock('Liip\ImagineBundle\Imagine\Data\DataManager', array(), array($mimeTypeGuesser, $extensionGuesser, $this->configuration));
-        $filterManager = $this->getMock('Liip\ImagineBundle\Imagine\Filter\FilterManager', array(), array($this->configuration, $this->imagine));
-
         $controller = new ImagineController(
-            $dataManager,
-            $filterManager,
-            $cacheManager,
-            new UriSigner('secret')
+            $dataManagerMock,
+            $filterManagerMock,
+            $cacheManagerMock,
+            $this->createUriSignerMock()
         );
 
-        $response = $controller->filterAction(new Request, 'cats.jpeg', 'thumbnail');
+        $response = $controller->filterAction(new Request(), $expectedPath, $expectedFilter);
 
         $this->assertInstanceOf('Symfony\Component\HttpFoundation\RedirectResponse', $response);
-        $this->assertEquals('http://foo.com/a/path/image.jpg', $response->headers->get('Location'));
-        $this->assertEquals(301, $response->getStatusCode());
+        $this->assertEquals($expectedUrl, $response->getTargetUrl());
+    }
+
+    public function testShouldApplyFiltersBeforeResolveIfCacheNotStored()
+    {
+        $expectedPath = 'theImage';
+        $expectedFilter = 'theFilter';
+        $expectedBinary = new Binary('aContent', 'aMimeType', 'aFormat');
+        $expectedFilteredBinary = new Binary('aContent', 'aMimeType', 'aFormat');
+        $expectedUrl = 'http://example.com/media/cache/theFilter/theImage';
+
+        $dataManagerMock = $this->createDataManagerMock();
+        $dataManagerMock
+            ->expects($this->once())
+            ->method('find')
+            ->with($expectedFilter, $expectedPath)
+            ->will($this->returnValue($expectedBinary))
+        ;
+
+        $filterManagerMock = $this->createFilterManagerMock();
+        $filterManagerMock
+            ->expects($this->once())
+            ->method('applyFilter')
+            ->with(
+                $this->identicalTo($expectedBinary),
+                $expectedFilter,
+                $runtimeConfig = array()
+            )
+            ->will($this->returnValue($expectedFilteredBinary))
+        ;
+
+        $cacheManagerMock = $this->createCacheManagerMock();
+        $cacheManagerMock
+            ->expects($this->once())
+            ->method('isStored')
+            ->with(
+                $expectedPath,
+                $expectedFilter
+            )
+            ->will($this->returnValue(false))
+        ;
+        $cacheManagerMock
+            ->expects($this->once())
+            ->method('store')
+            ->with(
+                $this->identicalTo($expectedFilteredBinary),
+                $expectedPath,
+                $expectedFilter
+            )
+            ->will($this->returnValue(false))
+        ;
+        $cacheManagerMock
+            ->expects($this->once())
+            ->method('resolve')
+            ->with($expectedPath, $expectedFilter)
+            ->will($this->returnValue($expectedUrl))
+        ;
+
+        $controller = new ImagineController(
+            $dataManagerMock,
+            $filterManagerMock,
+            $cacheManagerMock,
+            $this->createUriSignerMock()
+        );
+
+        $response = $controller->filterAction(new Request(), $expectedPath, $expectedFilter);
+
+        $this->assertInstanceOf('Symfony\Component\HttpFoundation\RedirectResponse', $response);
+        $this->assertEquals($expectedUrl, $response->getTargetUrl());
+    }
+
+    /**
+     * @return \PHPUnit_Framework_MockObject_MockObject|DataManager
+     */
+    protected function createDataManagerMock()
+    {
+        return $this->getMock('Liip\ImagineBundle\Imagine\Data\DataManager', array(), array(), '', false);
+    }
+
+    /**
+     * @return \PHPUnit_Framework_MockObject_MockObject|FilterManager
+     */
+    protected function createFilterManagerMock()
+    {
+        return $this->getMock('Liip\ImagineBundle\Imagine\Filter\FilterManager', array(), array(), '', false);
+    }
+
+    /**
+     * @return \PHPUnit_Framework_MockObject_MockObject|CacheManager
+     */
+    protected function createCacheManagerMock()
+    {
+        return $this->getMock('Liip\ImagineBundle\Imagine\Cache\CacheManager', array(), array(), '', false);
+    }
+
+    /**
+     * @return \PHPUnit_Framework_MockObject_MockObject|UriSigner
+     */
+    protected function createUriSignerMock()
+    {
+        return $this->getMock('Symfony\Component\HttpKernel\UriSigner', array(), array(), '', false);
     }
 }
