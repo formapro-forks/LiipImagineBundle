@@ -106,10 +106,11 @@ class ImagineControllerTest extends AbstractTest
         $cacheManager = new CacheManager(
             $this->configuration,
             $this->createRouterMock(),
-            new UriSigner('secret')
+            new UriSigner('secret'),
+            'thumbnail'
         );
 
-        $cacheManager->addResolver('web_path', $webPathResolver);
+        $cacheManager->addResolver('thumbnail', $webPathResolver);
 
         $controller = new ImagineController(
             $dataManager,

@@ -49,7 +49,7 @@ class CacheManager
         $this->filterConfig = $filterConfig;
         $this->router = $router;
         $this->uriSigner = $uriSigner;
-        $this->defaultResolver = $defaultResolver;
+        $this->defaultResolver = $defaultResolver ?: 'default';
     }
 
     /**

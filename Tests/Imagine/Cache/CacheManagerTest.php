@@ -83,7 +83,7 @@ class CacheManagerTest extends AbstractTest
             ->method('generate')
         ;
 
-        $cacheManager = new CacheManager($config, $router, new UriSigner('secret'));
+        $cacheManager = new CacheManager($config, $router, new UriSigner('secret'), 'default');
         $cacheManager->addResolver('default', $resolver);
 
         $actualBrowserPath = $cacheManager->getBrowserPath('cats.jpeg', 'thumbnail');
@@ -124,7 +124,7 @@ class CacheManagerTest extends AbstractTest
             ->will($this->returnValue('/media/cache/thumbnail/cats.jpeg'))
         ;
 
-        $cacheManager = new CacheManager($config, $router, new UriSigner('secret'));
+        $cacheManager = new CacheManager($config, $router, new UriSigner('secret'), 'default');
         $cacheManager->addResolver('default', $resolver);
 
         $actualBrowserPath = $cacheManager->getBrowserPath('cats.jpeg', 'thumbnail');
@@ -189,7 +189,8 @@ class CacheManagerTest extends AbstractTest
         $cacheManager = new CacheManager(
             $config,
             $this->createRouterMock(),
-            new UriSigner('secret')
+            new UriSigner('secret'),
+            'default'
         );
         $cacheManager->addResolver('default', $resolver);
 
