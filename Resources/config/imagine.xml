@@ -187,6 +187,11 @@
             <argument>%liip_imagine.data_root%</argument>
         </service>
 
+        <service id="liip_imagine.data.loader.prototype.stream" class="%liip_imagine.data.loader.stream.class%">
+            <argument><!-- will be injected by StreamLoaderFactory --></argument>
+            <argument><!-- will be injected by StreamLoaderFactory --></argument>
+        </service>
+
         <!-- Cache resolver -->
 
         <service id="liip_imagine.cache.resolver.prototype.web_path" class="%liip_imagine.cache.resolver.web_path.class%" public="true" abstract="true">

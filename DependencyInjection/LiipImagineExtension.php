@@ -2,15 +2,13 @@
 
 namespace Liip\ImagineBundle\DependencyInjection;
 
+use Liip\ImagineBundle\DependencyInjection\Factory\Loader\LoaderFactoryInterface;
 use Liip\ImagineBundle\DependencyInjection\Factory\Resolver\ResolverFactoryInterface;
 use Symfony\Component\Config\FileLocator;
-
 use Symfony\Component\DependencyInjection\Alias;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
-
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
-use Symfony\Component\HttpKernel\Kernel;
 
 class LiipImagineExtension extends Extension
 {
@@ -19,9 +17,25 @@ class LiipImagineExtension extends Extension
      */
     protected $resolversFactories = array();
 
+    /**
+     * @var LoaderFactoryInterface[]
+     */
+    protected $loadersFactories = array();
+
+    /**
+     * @param ResolverFactoryInterface $resolverFactory
+     */
     public function addResolverFactory(ResolverFactoryInterface $resolverFactory)
     {
         $this->resolversFactories[$resolverFactory->getName()] = $resolverFactory;
+    }
+
+    /**
+     * @param LoaderFactoryInterface $loaderFactory
+     */
+    public function addLoaderFactory(LoaderFactoryInterface $loaderFactory)
+    {
+        $this->loadersFactories[$loaderFactory->getName()] = $loaderFactory;
     }
 
     /**
@@ -30,11 +44,12 @@ class LiipImagineExtension extends Extension
     public function load(array $configs, ContainerBuilder $container)
     {
         $config = $this->processConfiguration(
-            new Configuration($this->resolversFactories),
+            new Configuration($this->resolversFactories, $this->loadersFactories),
             $configs
         );
 
         $this->loadResolvers($config['resolvers'], $container);
+        $this->loadLoaders($config['loaders'], $container);
 
         $loader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('imagine.xml');
@@ -76,6 +91,20 @@ class LiipImagineExtension extends Extension
             $factory = $this->resolversFactories[$factoryName];
 
             $factory->create($container, $resolverName, $resolverConfig[$factoryName]);
+        }
+    }
+
+    /**
+     * @param array $config
+     * @param ContainerBuilder $container
+     */
+    protected function loadLoaders(array $config, ContainerBuilder $container)
+    {
+        foreach ($config as $loaderName => $loaderConfig) {
+            $factoryName = key($loaderConfig);
+            $factory = $this->loadersFactories[$factoryName];
+
+            $factory->create($container, $loaderName, $loaderConfig[$factoryName]);
         }
     }
 }

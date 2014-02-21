@@ -2,6 +2,7 @@
 
 namespace Liip\ImagineBundle\DependencyInjection;
 
+use Liip\ImagineBundle\DependencyInjection\Factory\Loader\LoaderFactoryInterface;
 use Liip\ImagineBundle\DependencyInjection\Factory\Resolver\ResolverFactoryInterface;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -15,11 +16,18 @@ class Configuration implements ConfigurationInterface
     protected $resolversFactories;
 
     /**
-     * @param ResolverFactoryInterface[] $resolversFactories
+     * @var LoaderFactoryInterface[]
      */
-    public function __construct(array $resolversFactories)
+    protected $loadersFactories;
+
+    /**
+     * @param ResolverFactoryInterface[] $resolversFactories
+     * @param LoaderFactoryInterface[] $loadersFactories
+     */
+    public function __construct(array $resolversFactories, array $loadersFactories)
     {
         $this->resolversFactories = $resolversFactories;
+        $this->loadersFactories = $loadersFactories;
     }
 
     /**
@@ -36,8 +44,15 @@ class Configuration implements ConfigurationInterface
                     ->useAttributeAsKey('name')
                     ->prototype('array')
         ;
-
         $this->addResolversSections($resolversPrototypeNode);
+
+        $loadersPrototypeNode = $rootNode
+            ->children()
+                ->arrayNode('loaders')
+                    ->useAttributeAsKey('name')
+                    ->prototype('array')
+        ;
+        $this->addLoadersSections($loadersPrototypeNode);
 
         $rootNode
             ->fixXmlConfig('format', 'formats')
@@ -98,6 +113,18 @@ class Configuration implements ConfigurationInterface
     protected function addResolversSections(ArrayNodeDefinition $resolversPrototypeNode)
     {
         foreach ($this->resolversFactories as $factory) {
+            $factory->addConfiguration(
+                $resolversPrototypeNode->children()->arrayNode($factory->getName())
+            );
+        }
+    }
+
+    /**
+     * @param ArrayNodeDefinition $resolversPrototypeNode
+     */
+    protected function addLoadersSections(ArrayNodeDefinition $resolversPrototypeNode)
+    {
+        foreach ($this->loadersFactories as $factory) {
             $factory->addConfiguration(
                 $resolversPrototypeNode->children()->arrayNode($factory->getName())
             );
