@@ -43,7 +43,7 @@ class WebPathResolverFactory implements ResolverFactoryInterface
             ->addDefaultsIfNotSet()
             ->children()
                 ->scalarNode('web_root')->defaultValue('%kernel.root_dir%/../web')->cannotBeEmpty()->end()
-                ->scalarNode('password')->defaultValue('media/cache')->cannotBeEmpty()->end()
+                ->scalarNode('cache_prefix')->defaultValue('media/cache')->cannotBeEmpty()->end()
             ->end()
         ;
     }

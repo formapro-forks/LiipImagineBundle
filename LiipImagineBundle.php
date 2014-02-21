@@ -3,6 +3,7 @@
 namespace Liip\ImagineBundle;
 
 use Liip\ImagineBundle\DependencyInjection\Compiler\LoadersCompilerPass;
+use Liip\ImagineBundle\DependencyInjection\Factory\Resolver\AwsS3ResolverFactory;
 use Liip\ImagineBundle\DependencyInjection\Factory\Resolver\WebPathResolverFactory;
 use Liip\ImagineBundle\DependencyInjection\LiipImagineExtension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -23,5 +24,6 @@ class LiipImagineBundle extends Bundle
         $extension = $container->getExtension('liip_imagine');
 
         $extension->addResolverFactory(new WebPathResolverFactory);
+        $extension->addResolverFactory(new AwsS3ResolverFactory);
     }
 }

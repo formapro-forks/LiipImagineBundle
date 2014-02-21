@@ -41,7 +41,8 @@ class LiipImagineExtension extends Extension
 
         $container->setAlias('liip_imagine', new Alias('liip_imagine.'.$config['driver']));
 
-        $container->setParameter('liip_imagine.cache_prefix', $cachePrefix);
+        $container->setParameter('liip_imagine.cache_prefix', 'media/cache');
+        $container->setParameter('liip_imagine.web_root', '%kernel.root_dir%/../web');
         $container->setParameter('liip_imagine.data_root', $config['data_root']);
         $container->setParameter('liip_imagine.formats', $config['formats']);
         $container->setParameter('liip_imagine.cache.resolver.default', $config['cache']);
