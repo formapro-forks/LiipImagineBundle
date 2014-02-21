@@ -12,3 +12,12 @@ framework:
     secret:          %secret%
     router:          { resource: "%kernel.root_dir%/config/routing.yml" }
     default_locale:  %locale%
+
+liip_imagine:
+    web_root: %kernel.root_dir%/web
+    filter_sets:
+        thumbnail_web_path:
+            cache: web_path
+            data_loader: filesystem
+            filters:
+                thumbnail: { size: [223, 223], mode: inset }
